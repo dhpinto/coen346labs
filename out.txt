@@ -1,0 +1,38 @@
+3304
+8221
+26849
+14038
+1509
+6367
+7856
+21362
+3304 8221 26849 14038 1509 6367 7856 21362 
+Thread Thread 00000001 started started
+
+Thread 0100 started
+Thread 0010 started
+Thread 0011 started
+Thread 0100 started
+Thread 0101 started
+Thread Thread 01100101 started finished:  26849 
+Thread 
+0111Thread 0110 finished:  1509  started
+
+Thread 1000 started
+Thread 1001 startedThread 
+Thread 01111000 finished:   finished:  14038 3304 
+
+Thread 1001 finished:  6367 
+Thread 1010 started
+Thread 1010 finished:  8221 
+Thread 1011 started
+Thread Thread 11001011 started finished:  7856 
+
+Thread 1100 finished:  21362 
+Thread Thread 00110010Thread  finished:   finished:  01001509 6367  finished:  3304 8221 14038 26849 
+
+
+Thread 0100 finished:  7856 21362 
+Thread 0000 finished:  3304 8221 14038 26849 
+Thread 0001 finished:  1509 6367 7856 21362 
+1509 3304 6367 7856 8221 14038 21362 26849 
