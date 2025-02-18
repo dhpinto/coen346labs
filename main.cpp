@@ -133,7 +133,6 @@ int main()
 
 	while (std::getline(ReadMyInputFile, inputMyText)) // get the first line of the cursor and put it in inputMyTest string
 	{
-		// std::cout << inputMyText << std::endl;
 		arr.push_back(stoi(inputMyText)); // pushback inputMytext words into the array called arr
 	}
 	int n = arr.size();
