@@ -10,29 +10,29 @@
 Thread 0001 started
 Thread 0010 started
 Thread 0011 started
-Thread 0100 started
-Thread 0111 started
 Thread 0101 started
+Thread 0101 started
+Thread 0111 started
+Thread 0111 finished:  3304 
 Thread 1000 started
 Thread 1000 finished:  8221 
 Thread 0110 started
-Thread 0110 finished:  3304 
 Thread 1010 started
-Thread 1010 finished:  7856 
+Thread 1010 finished:  6367 
 Thread 1011 started
-Thread 1011 finished:  1509 
-Thread 1101 started
-Thread 1101 finished:  14038 
-Thread 1001 started
-Thread 1001 finished:  26849 
-Thread 0011 finished:  3304 8221 
-Thread 1110 started
-Thread 1110 finished:  6367 
+Thread 1011 finished:  26849 
 Thread 1100 started
-Thread 1100 finished:  21362 
-Thread 0111 finished:  7856 21362 
+Thread 1100 finished:  14038 
+Thread 1101 started
+Thread 1101 finished:  7856 
+Thread 1001 started
+Thread 1001 finished:  1509 
+Thread 1110 started
+Thread 1110 finished:  21362 
+Thread 0101 finished:  14038 26849 
 Thread 0101 finished:  1509 6367 
-Thread 0100 finished:  14038 26849 
+Thread 0011 finished:  3304 8221 
+Thread 0110 finished:  7856 21362 
 Thread 0010 finished:  1509 6367 7856 21362 
 Thread 0001 finished:  3304 8221 14038 26849 
 1509 3304 6367 7856 8221 14038 21362 26849 

@@ -6,7 +6,9 @@
 #include <bitset>
 #include <mutex> //used for synchronization (preventing threads to clash)
 
-std::mutex mtx;
+std::mutex mtx;	   // used for cout
+std::mutex id_mtx; // used for globalID
+
 int globalID = 0;
 
 void mergeSortInAThread(std::vector<int> &arr, int left, int right, int threadID);
@@ -91,8 +93,16 @@ void mergeSort(std::vector<int> &arr, int left, int right)
 
 	int mid = left + (right - left) / 2;
 
-	std::thread lm(mergeSortInAThread, std::ref(arr), left, mid, ++globalID);	   // recursion 1 (left half), pass by reference
-	std::thread rm(mergeSortInAThread, std::ref(arr), mid + 1, right, ++globalID); // recursion 2 (right half)
+	{
+		std::lock_guard<std::mutex> lock(id_mtx); // ensures that only one thread can access the globalID at a time
+		globalID++;
+	}
+	std::thread lm(mergeSortInAThread, std::ref(arr), left, mid, globalID); // recursion 1 (left half), pass by reference
+	{
+		std::lock_guard<std::mutex> lock(id_mtx);
+		globalID++;
+	}
+	std::thread rm(mergeSortInAThread, std::ref(arr), mid + 1, right, globalID); // recursion 2 (right half)
 
 	lm.join(); // waiting for left thread to finish
 	rm.join(); // waiting for right thread to finish
@@ -131,6 +141,7 @@ int main()
 
 	printVector(arr);
 	mergeSort(arr, 0, n - 1);
+	std::cout << "Sorted array: ";
 	printVector(arr);
 	return 0;
 }
