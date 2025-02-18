@@ -133,12 +133,13 @@ int main()
 
 	while (std::getline(ReadMyInputFile, inputMyText)) // get the first line of the cursor and put it in inputMyTest string
 	{
-		std::cout << inputMyText << std::endl;
+		// std::cout << inputMyText << std::endl;
 		arr.push_back(stoi(inputMyText)); // pushback inputMytext words into the array called arr
 	}
 	int n = arr.size();
 	ReadMyInputFile.close();
 
+	std::cout << "Unsorted array: ";
 	printVector(arr);
 	mergeSort(arr, 0, n - 1);
 	std::cout << "Sorted array: ";
