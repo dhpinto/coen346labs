@@ -14,10 +14,9 @@ int globalID = 0;
 void mergeSortInAThread(std::vector<int> &arr, int left, int right, int threadID);
 void mergeSort(std::vector<int> &arr, int left, int right);
 
-
-void merge(std::vector<int> &arr, int left, int mid, int right)// Merges the two sorted subarrays into one sorted array
+void merge(std::vector<int> &arr, int left, int mid, int right) // Merges the two sorted subarrays into one sorted array
 {
-    //Determining the size of each subarrays
+	// Determining the size of each subarrays
 	int arrLeft = mid - left + 1;
 	int arrRight = right - mid;
 
@@ -35,10 +34,10 @@ void merge(std::vector<int> &arr, int left, int mid, int right)// Merges the two
 		tempRight[j] = arr[mid + 1 + j];
 	}
 
-	int i = 0;//Index for tempLeft
-	int j = 0;//Index for tempRight
-	int k = left;//Index for arr
-    // Merging the two temporary vectors back into the array keeping the sorted order
+	int i = 0;	  // Index for tempLeft
+	int j = 0;	  // Index for tempRight
+	int k = left; // Index for arr
+	// Merging the two temporary vectors back into the array keeping the sorted order
 	while ((i < arrLeft) && (j < arrRight))
 	{
 		if (tempLeft[i] <= tempRight[j])
@@ -63,25 +62,25 @@ void merge(std::vector<int> &arr, int left, int mid, int right)// Merges the two
 		arr[k++] = tempRight[j++];
 	}
 }
-std::string printVector(std::vector<int> &arr, int left, int right) //Prints the handled subarrays during sorting
+std::string printVector(std::vector<int> &arr, int left, int right) // Prints the handled subarrays during sorting
 {
 	std::string printResult;
 	for (int i = left; i <= right; i++)
 	{
-		printResult += std::to_string(arr[i]) + " ";//Converting each number to a string and concatenates the numbers
+		printResult += std::to_string(arr[i]) + " "; // Converting each number to a string and concatenates the numbers
 	}
 	return printResult;
 }
 
 void mergeSortInAThread(std::vector<int> &arr, int left, int right, int threadID) // This function is a wrapper for the mergeSort function managing multithreading
 {
-    //Ensuring resource acquisition is initialized
+	// Ensuring resource acquisition is initialized
 	{
-		std::lock_guard<std::mutex> lock(mtx); // Used so cout from threads working simultaneously do not overlap
-		std::cout << "Thread " << std::bitset<4>(threadID).to_string() << " started" << std::endl;//Converting threadID to a 4-bit binary string
+		std::lock_guard<std::mutex> lock(mtx);													   // Used so cout from threads working simultaneously do not overlap
+		std::cout << "Thread " << std::bitset<4>(threadID).to_string() << " started" << std::endl; // Converting threadID to a 4-bit binary string
 	}
-	mergeSort(arr, left, right); //Calling the function to sort the subarray from left to right
-    //Making sure only one thread is printed at a time
+	mergeSort(arr, left, right); // Calling the function to sort the subarray from left to right
+	// Making sure only one thread is printed at a time
 	{
 		std::lock_guard<std::mutex> lock(mtx);
 		std::cout << "Thread " << std::bitset<4>(threadID).to_string() << " finished:  " << printVector(arr, left, right) << std::endl;
@@ -89,31 +88,31 @@ void mergeSortInAThread(std::vector<int> &arr, int left, int right, int threadID
 	}
 }
 
-void mergeSort(std::vector<int> &arr, int left, int right)//The function recursively sorts the array arr with left being the starting index and right the ending index of the subarrays
+void mergeSort(std::vector<int> &arr, int left, int right) // The function recursively sorts the array arr with left being the starting index and right the ending index of the subarrays
 {
-    //Stopping the recursion for the case where there is one element meaning the subarray is already sorted or the invalid case where left is bigger than right
+	// Stopping the recursion for the case where there is one element meaning the subarray is already sorted or the invalid case where left is bigger than right
 	if (left >= right)
 		return;
-    //Finding the correct middle index position by adding left to (right-left)/2
+	// Finding the correct middle index position by adding left to (right-left)/2
 	int mid = left + (right - left) / 2;
 
-    // Ensures that only one thread can access the globalID at a time
+	// Ensures that only one thread can access the globalID at a time
 	{
 		std::lock_guard<std::mutex> lock(id_mtx);
 		globalID++;
 	}
-	std::thread lm(mergeSortInAThread, std::ref(arr), left, mid, globalID); //The left half (from left to mid) of the array arr is sorted in a thread
+	std::thread lm(mergeSortInAThread, std::ref(arr), left, mid, globalID); // The left half (from left to mid) of the array arr is sorted in a thread
 	{
 		std::lock_guard<std::mutex> lock(id_mtx);
 		globalID++;
 	}
-	std::thread rm(mergeSortInAThread, std::ref(arr), mid + 1, right, globalID); //The right half (from mid+1 to right) of the array arr is sorted in another thread
+	std::thread rm(mergeSortInAThread, std::ref(arr), mid + 1, right, globalID); // The right half (from mid+1 to right) of the array arr is sorted in another thread
 
-    //.join() makes sure that both sorting threads are done before merging
+	//.join() makes sure that both sorting threads are done before merging
 	lm.join();
 	rm.join();
 
-	merge(arr, left, mid, right);//Merges the sorting halves
+	merge(arr, left, mid, right); // Merges the sorting halves
 }
 
 // Prints all vector elements, original array and final sorted array
