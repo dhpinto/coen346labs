@@ -3,7 +3,7 @@
 #include <string>
 #include <thread>
 #include <fstream>
-#include <bitset>//Used to convert id of the threads
+#include <bitset>
 #include <mutex> //Used for synchronization purposes to prevent multiple threads from accessing a shared resource at the same time
 
 std::mutex mtx;	   // Used for cout
