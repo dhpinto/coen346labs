@@ -62,7 +62,7 @@ void merge(std::vector<int> &arr, int left, int mid, int right)
 		arr[k++] = tempRight[j++];
 	}
 }
-std::string printVector(std::vector<int> &arr, int left, int right) // Prepare the message to cout in one shot
+std::string printVector(std::vector<int> &arr, int left, int right) // Prints handled subarrays during sorting
 {
 	std::string printResult;
 	for (int i = left; i <= right; i++)
@@ -110,7 +110,7 @@ void mergeSort(std::vector<int> &arr, int left, int right)
 	merge(arr, left, mid, right);
 }
 
-// cout all vector elements
+// cout all vector elements, original array and final sorted array
 void printVector(std::vector<int> &arr)
 {
 	for (int i = 0; i < arr.size(); i++)
