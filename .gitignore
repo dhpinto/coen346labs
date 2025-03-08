@@ -1,0 +1,4 @@
+*.exe
+.vscode
+*.vcxproj*
+x64/
