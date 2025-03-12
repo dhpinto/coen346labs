@@ -10,10 +10,8 @@
 
 using namespace std;
 
-int GLOBAL_TIME = 0;   // global variable representing time
-mutex schedulermtx;	   // mutex for the scheduler
-condition_variable cv; // condition variable for processs schedulering
-ofstream output_file;  // output file stream
+mutex outputMtx;	  // mutex for the output
+ofstream output_file; // output file stream
 
 class Process
 {
@@ -22,68 +20,70 @@ public:
 														  serviceTime(inServiceTime),
 														  remainingTime(inServiceTime),
 														  processNumber(id),
-														  completed(false)
+														  started(false),
+														  completed(false) {}
+
+	void execute(const string &username, int quantum, int &currentTime)
 	{
+
+		if (!started)
+		{
+			lock_guard<mutex> lock(outputMtx);
+			output_file << "Time " << currentTime << ", User " << username << ", Process " << processNumber << ", Started" << endl;
+			started = true;
+		}
+
+		{
+			lock_guard<mutex> lock(outputMtx);
+			output_file << "Time " << currentTime << ", User " << username << ", Process " << processNumber << ", Resumed" << endl;
+		}
+
+		int actualExecutionTime = min(quantum, remainingTime);
+
+		currentTime += actualExecutionTime;
+		remainingTime -= actualExecutionTime;
+
+		{
+			lock_guard<mutex> lock(outputMtx);
+			output_file << "Time " << currentTime << ", User " << username << ", Process " << processNumber << ", Paused" << endl;
+
+			if (remainingTime <= 0)
+			{
+				completed = true;
+				output_file << "Time " << currentTime << ", User " << username << ", Process " << processNumber << ", Finished" << endl;
+			}
+		}
 	}
 
-	void run(const string &username)
-	{
-		unique_lock<mutex> lock(schedulermtx);
-		output_file << "Time " << GLOBAL_TIME << ", User " << username << ", Process " << processNumber << ", Resumed " << endl;
-		lock.unlock();
-
-		this_thread::sleep_for(chrono::seconds(quantumTime));
-		lock.lock();
-		remainingTime -= quantumTime;
-
-		if (remainingTime <= 0)
-		{
-			completed = true;
-			output_file << "Time " << GLOBAL_TIME + quantumTime << ", User " << username << ", Process " << processNumber << ", Finished " << endl;
-		}
-		else
-		{
-			output_file << "Time " << GLOBAL_TIME + quantumTime << ", User " << username << ", Process " << processNumber << ", Paused " << endl;
-		}
-		lock.unlock();
-		cv.notify_all();
-	}
-
-	bool isReady() const { return readyTime <= GLOBAL_TIME; }
+	bool isReady(int currentTime) const { return readyTime <= currentTime && !completed; }
 	bool isCompleted() const { return completed; }
-	void setQuantumTime(int inputQT) { quantumTime = inputQT; }
+	int getRemainingTime() const { return remainingTime; }
 
 private:
 	int readyTime;
 	int serviceTime;
 	int remainingTime;
-	int quantumTime;
-	bool completed;
 	int processNumber;
+	bool completed;
+	bool started;
 };
 
 class User
 {
 public:
-	vector<Process> listOfProcesses;
-	string username;
-
-	User(const string &inUsername) : username(inUsername), processNumberCounter(0) {}
+	User(const string &inUsername) : username(inUsername) {}
 
 	void addProcess(int readyTime, int serviceTime)
 	{
-		listOfProcesses.emplace_back(readyTime, serviceTime, processNumberCounter++);
-		// Process newProcess(readyTime, serviceTime, processNumberCounter);
-		// processNumberCounter++;
-		// listOfProcesses.push(newProcess);
+		processes.emplace_back(readyTime, serviceTime, processes.size());
 	}
 
-	vector<Process *> getReadyProcesses()
+	vector<Process *> getReadyProcesses(int currentTime)
 	{
 		vector<Process *> readyProcesses;
-		for (auto &process : listOfProcesses)
+		for (auto &process : processes)
 		{
-			if (process.isReady() && !process.isCompleted())
+			if (process.isReady(currentTime))
 			{
 				readyProcesses.push_back(&process);
 			}
@@ -91,9 +91,21 @@ public:
 		return readyProcesses;
 	}
 
-	bool allProcessesCompleted()
+	bool hasReadyProcesses(int currentTime) const
 	{
-		for (auto &process : listOfProcesses)
+		for (const auto &process : processes)
+		{
+			if (process.isReady(currentTime) && !process.isCompleted())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool allProcessesCompleted() const
+	{
+		for (const auto &process : processes)
 		{
 			if (!process.isCompleted())
 			{
@@ -103,81 +115,63 @@ public:
 		return true;
 	}
 
-	void distributeQuantumTime(int totalQuantum)
-	{
-		vector<Process *> readyProcesses = getReadyProcesses(); // get the number of processes that are ready
-		int processCount = readyProcesses.size();
-
-		if (processCount > 0)
-		{
-			int evenQuantumTime = totalQuantum / processNumberCounter;
-			for (auto *process : readyProcesses)
-			{
-				process->setQuantumTime(evenQuantumTime);
-			}
-		}
-	}
+	string getUsername() const { return username; }
 
 private:
-	int processNumberCounter = 0;
+	string username;
+	vector<Process> processes;
 };
 class Scheduler
 {
 public:
-	Scheduler(int inFixedTotalQuantumtime) : totalQuantumTime(inFixedTotalQuantumtime) {}
+	Scheduler(int quantum) : totalQuantum(quantum) {}
 
-	void scheduleListOfProcesses(vector<User> &listOfUsers)
+	void run(vector<User> &users)
 	{
-		using namespace chrono_literals;
-		while (!allUsersCompleted(listOfUsers))
+		int currentTime = 1; // start at time 1
+
+		while (!allUsersCompleted(users))
 		{
-			distributeQuantum(listOfUsers);
 
-			for (auto &user : listOfUsers)
+			vector<User *> activeUsers;
+			for (auto &user : users)
 			{
-				vector<Process *> readyProcesses = user.getReadyProcesses();
-				for (auto *process : readyProcesses)
+				if (user.hasReadyProcesses(currentTime))
 				{
-					if (!process->isCompleted())
-					{
-						thread processThread(&Process::run, process, user.username);
-						processThread.join();
-
-						GLOBAL_TIME += process->isCompleted() ? 0 : totalQuantumTime / readyProcesses.size();
-					}
+					activeUsers.push_back(&user);
 				}
 			}
-			this_thread::sleep_for(1s); // wait 1 second
+
+			if (activeUsers.size() == 0)
+			{
+				currentTime++;
+				continue;
+			}
+
+			int userQuantum = totalQuantum / activeUsers.size();
+
+			for (auto *user : activeUsers)
+			{
+				auto readyProcesses = user->getReadyProcesses(currentTime);
+				if (readyProcesses.size() == 0)
+				{
+					continue;
+				}
+
+				int processQuantum = userQuantum / readyProcesses.size();
+
+				for (auto *process : readyProcesses)
+				{
+					process->execute(user->getUsername(), processQuantum, currentTime);
+				}
+			}
 		}
 	}
 
 private:
-	void distributeQuantum(vector<User> &listOfUsers)
+	bool allUsersCompleted(const vector<User> &users) const
 	{
-		vector<User *> activeUsers;
-		for (auto &user : listOfUsers)
-		{
-			if (!user.allProcessesCompleted())
-			{
-				activeUsers.push_back(&user);
-			}
-		}
-
-		if (activeUsers.size() == 0)
-		{
-			return;
-		}
-
-		int perUserQuantum = totalQuantumTime / activeUsers.size();
-		for (auto *user : activeUsers)
-		{
-			user->distributeQuantumTime(perUserQuantum);
-		}
-	}
-
-	bool allUsersCompleted(vector<User> &inListOfUsers)
-	{
-		for (auto &user : inListOfUsers)
+		for (const auto &user : users)
 		{
 			if (!user.allProcessesCompleted())
 			{
@@ -187,7 +181,7 @@ private:
 		return true;
 	}
 
-	int totalQuantumTime; // Total quantum time given for each User
+	int totalQuantum; // Total quantum time given for each User
 };
 
 int main()
@@ -197,12 +191,12 @@ int main()
 
 	if (!input_file || !output_file)
 	{
-		cerr << "Error opening the file" << endl;
+		cerr << "Error opening the files" << endl;
 		return 1;
 	}
 
-	int totalQuantumTime;
-	input_file >> totalQuantumTime;
+	int quantum;
+	input_file >> quantum;
 
 	vector<User> users;
 	string username;
@@ -220,8 +214,8 @@ int main()
 	}
 	input_file.close();
 
-	Scheduler scheduler(totalQuantumTime);
-	scheduler.scheduleListOfProcesses(users);
+	Scheduler scheduler(quantum);
+	scheduler.run(users);
 
 	output_file.close();
 	cout << "Output file has been created" << endl;
