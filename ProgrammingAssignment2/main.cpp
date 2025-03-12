@@ -8,12 +8,12 @@
 #include <mutex>
 #include <condition_variable>
 
-
+using namespace std;
 
 int GLOBAL_TIME = 0; //global variable representing time
-std::mutex schedulermtx; //mutex for the scheduler
-std::condition_variable cv; //condition variable for processs schedulering
-std::ofstream output_file; //output file stream
+mutex schedulermtx; //mutex for the scheduler
+condition_variable cv; //condition variable for processs schedulering
+ofstream output_file; //output file stream
 
 class Process
 {
@@ -28,12 +28,12 @@ public:
 
 	}
 
-	void run(const std::string& username)
+	void run(const string& username)
 	{
-		std::unique_lock<std::mutex> lock(schedulermtx);
-		output_file << "Time " << GLOBAL_TIME << ", User " << username <<", Process " << processNumber << ", Resumed " << std::endl;
+		unique_lock<mutex> lock(schedulermtx);
+		output_file << "Time " << GLOBAL_TIME << ", User " << username <<", Process " << processNumber << ", Resumed " << endl;
 		lock.unlock();
-		std::this_thread::sleep_for(std::chrono::seconds(quantumTime));
+		this_thread::sleep_for(chrono::seconds(quantumTime));
 		lock.lock();
 		remainingTime -= quantumTime;
 		GLOBAL_TIME += quantumTime;
@@ -41,11 +41,11 @@ public:
 		if (remainingTime <= 0)
 		{
 			completed = true;
-			output_file << "Time " << GLOBAL_TIME << ", User " << username << ", Process " << processNumber << ", Finished " << std::endl;
+			output_file << "Time " << GLOBAL_TIME << ", User " << username << ", Process " << processNumber << ", Finished " << endl;
 		}
 		else
 		{
-			output_file << "Time " << GLOBAL_TIME << ", User " << username << ", Process " << processNumber << ", Paused " << std::endl;
+			output_file << "Time " << GLOBAL_TIME << ", User " << username << ", Process " << processNumber << ", Paused " << endl;
 		}
 		lock.unlock();
 		cv.notify_all();
@@ -69,10 +69,10 @@ private:
 class User
 {
 public:	
-	std::vector<Process> listOfProcesses;
-	std::string username;
+	vector<Process> listOfProcesses;
+	string username;
 
-	User(std::string& inUsername):username(inUsername){}
+	User(const string& inUsername):username(inUsername), processNumberCounter(0){}
 
 	void addProcess(int readyTime, int serviceTime)
 	{
@@ -82,8 +82,8 @@ public:
 		// listOfProcesses.push(newProcess);
 	}
 
-	std:: vector<Process*> getReadyProcesses(){
-		std::vector<Process*> readyProcesses;
+	vector<Process*> getReadyProcesses(){
+		vector<Process*> readyProcesses;
 		for (auto& process : listOfProcesses){
 			if (process.isReady() && !process.isCompleted()){
 				readyProcesses.push_back(&process);
@@ -116,36 +116,35 @@ public:
 private:
 	int processNumberCounter = 0;
 };
-class Scheduler
-{
+class Scheduler{
 public:
-	Scheduler(int inFixedTotalQuantumtime) ://member initiliazer list
+	Scheduler(int inFixedTotalQuantumtime) :
 		totalQuantumTime(inFixedTotalQuantumtime){}
 
-	void scheduleListOfProcesses(std::vector<User>& listOfUsers){
-		using namespace std::chrono_literals;
+	void scheduleListOfProcesses(vector<User>& listOfUsers){
+		using namespace chrono_literals;
 		while (!allUsersCompleted(listOfUsers)){
 			distributeQuantum(listOfUsers);
 
 			for (auto& user : listOfUsers){
 				vector<Process*> readyProcesses = user.getReadyProcesses();
 				for (auto* process : readyProcesses){
-					if (process->isCompleted()){
+					if (!process->isCompleted()){
 						thread processThread(&Process::run, process, user.username);
 						processThread.join();
 					}
 				}
 			}
 			GLOBAL_TIME++;//from the global variable
-			std::this_thread::sleep_for(1s);//wait 1 second
+			this_thread::sleep_for(1s);//wait 1 second
 		}
 	}
 	
 	private:
 
-	void distributeQuantum(std::vector<User>& listOfUsers)
+	void distributeQuantum(vector<User>& listOfUsers)
 	{
-		std::vector<User*> activeUsers;
+		vector<User*> activeUsers;
 		for (auto& user : listOfUsers){
 			if (!user.allProcessesCompleted())
 			{
@@ -158,7 +157,7 @@ public:
 		}
 	}
 
-	bool allUsersCompleted(std::vector<User>& inListOfUsers)
+	bool allUsersCompleted(vector<User>& inListOfUsers)
 	{
 		for (auto& user : inListOfUsers){
 			if (!user.allProcessesCompleted()){
@@ -179,32 +178,31 @@ int main()
 
 	if (!input_file || !output_file)
 	{
-		std::cerr << "Error opening the file" << std::endl;
+		cerr << "Error opening the file" << endl;
 		return 1;
 	}
 
 	int totalQuantumTime;
 	input_file >> totalQuantumTime;
 
-	std::vector<User> users;
+	vector<User> users;
 	string username;
 	int processNumberCounter;
 
 	while (input_file >> username >> processNumberCounter)
 	{
-		User newUser(username);
+		users.emplace_back(username);
 		for (int i = 0; i < processNumberCounter; i++)
 		{
 			int readyTime, serviceTime;
 			input_file >> readyTime >> serviceTime;
 			newUser.addProcess(readyTime, serviceTime);
 		}
-		users.push_back(newUser);
 	}
 	input_file.close();
 
 	Scheduler scheduler(totalQuantumTime);
-	scheduler.run(users);
+	scheduler.scheduleListOfProcesses(users);
 	
 	output_file.close();
 
