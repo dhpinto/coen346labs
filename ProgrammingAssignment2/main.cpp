@@ -1,12 +1,10 @@
 #include <iostream>
 #include <fstream>
-#include <queue>
 #include <vector>
 #include <chrono>
 #include <thread>
 #include <string>
 #include <mutex>
-#include <condition_variable>
 
 using namespace std;
 
@@ -39,6 +37,8 @@ public:
 		}
 
 		int actualExecutionTime = min(quantum, remainingTime);
+
+		this_thread::sleep_for(std::chrono::milliseconds(100));
 
 		currentTime += actualExecutionTime;
 		remainingTime -= actualExecutionTime;
@@ -145,6 +145,7 @@ public:
 			if (activeUsers.size() == 0)
 			{
 				currentTime++;
+				this_thread::sleep_for(std::chrono::milliseconds(50)); // small sleep when idle
 				continue;
 			}
 
@@ -218,7 +219,7 @@ int main()
 	scheduler.run(users);
 
 	output_file.close();
-	cout << "Output file has been created" << endl;
+	cout << "View output.txt for results" << endl;
 
 	return 0;
 }
