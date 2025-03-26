@@ -34,7 +34,6 @@ public:
 		}
 
 		// else, if process already started, process is resumed
-		else
 		{
 			lock_guard<mutex> lock(outputMtx);
 			output_file << "Time " << currentTime << ", User " << username << ", Process " << processNumber << ", Resumed" << endl;
