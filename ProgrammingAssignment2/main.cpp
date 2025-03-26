@@ -8,22 +8,22 @@
 
 using namespace std;
 
-mutex outputMtx;	  // mutex for the output
+mutex outputMtx, timeMtx;	  // mutex for the output
 ofstream output_file; // output file stream
 
 class Process
 {
 public:
 	Process(int inReadyTime, int inServiceTime, int id) : readyTime(inReadyTime),		// time when the process is ready to be executed
-														  serviceTime(inServiceTime),	// total time needed to complete the process
-														  remainingTime(inServiceTime), // remaining time to complete the process
-														  processNumber(id),			// unique id for each process
-														  started(false),				// flag to check if the process has started
-														  completed(false)
+		serviceTime(inServiceTime),	// total time needed to complete the process
+		remainingTime(inServiceTime), // remaining time to complete the process
+		processNumber(id),			// unique id for each process
+		started(false),				// flag to check if the process has started
+		completed(false)
 	{
 	} // flag to check if the process has completed
 
-	void execute(const string &username, int quantum, int &currentTime)
+	void execute(const string& username, int quantum, int& currentTime)
 	{
 
 		if (!started) // if it's the first time the process is executed, log as started
@@ -34,6 +34,7 @@ public:
 		}
 
 		// else, if process already started, process is resumed
+		else
 		{
 			lock_guard<mutex> lock(outputMtx);
 			output_file << "Time " << currentTime << ", User " << username << ", Process " << processNumber << ", Resumed" << endl;
@@ -43,8 +44,11 @@ public:
 
 		this_thread::sleep_for(std::chrono::milliseconds(100)); // simulate execution
 
-		currentTime += actualExecutionTime;
-		remainingTime -= actualExecutionTime; // update current time and remaining time
+		{
+			lock_guard<mutex> lock(timeMtx);
+			currentTime += actualExecutionTime;
+			remainingTime -= actualExecutionTime; // update current time and remaining time
+		}
 
 		{
 			// after execution pauses:
@@ -75,17 +79,17 @@ private:
 class User
 {
 public:
-	User(const string &inUsername) : username(inUsername) {}
+	User(const string& inUsername) : username(inUsername) {}
 
 	void addProcess(int readyTime, int serviceTime)
 	{
 		processes.emplace_back(readyTime, serviceTime, processes.size()); // adds process to the back of the vector
 	}
 
-	vector<Process *> getReadyProcesses(int currentTime) // get list of processes that are ready to execute
+	vector<Process*> getReadyProcesses(int currentTime) // get list of processes that are ready to execute
 	{
-		vector<Process *> readyProcesses;
-		for (auto &process : processes)
+		vector<Process*> readyProcesses;
+		for (auto& process : processes)
 		{
 			if (process.isReady(currentTime))
 			{
@@ -97,7 +101,7 @@ public:
 
 	bool hasReadyProcesses(int currentTime) const // check if there are any processes ready to execute
 	{
-		for (const auto &process : processes)
+		for (const auto& process : processes)
 		{
 			if (process.isReady(currentTime) && !process.isCompleted())
 			{
@@ -109,7 +113,7 @@ public:
 
 	bool allProcessesCompleted() const // check if all the user's processes are completed
 	{
-		for (const auto &process : processes)
+		for (const auto& process : processes)
 		{
 			if (!process.isCompleted())
 			{
@@ -130,15 +134,15 @@ class Scheduler
 public:
 	Scheduler(int quantum) : totalQuantum(quantum) {}
 
-	void run(vector<User> &users) // run the scheduler until all processes are completed
+	void run(vector<User>& users) // run the scheduler until all processes are completed
 	{
 		int currentTime = 1; // start at time 1
 
 		while (!allUsersCompleted(users))
 		{
 
-			vector<User *> activeUsers;
-			for (auto &user : users)
+			vector<User*> activeUsers;
+			for (auto& user : users)
 			{
 				if (user.hasReadyProcesses(currentTime))
 				{
@@ -155,7 +159,7 @@ public:
 
 			int userQuantum = totalQuantum / activeUsers.size(); // divide the total quantum time among the active users
 
-			for (auto *user : activeUsers) // execute processes for each active user
+			for (auto* user : activeUsers) // execute processes for each active user
 			{
 				auto readyProcesses = user->getReadyProcesses(currentTime);
 				if (readyProcesses.size() == 0) // if no processes are ready to execute, exit for loop
@@ -165,18 +169,29 @@ public:
 
 				int processQuantum = userQuantum / readyProcesses.size(); // divide the user quantum time among the ready processes
 
-				for (auto *process : readyProcesses) // execute each ready process
+				vector<thread> threads;
+
+				for (auto* process : readyProcesses)
 				{
-					process->execute(user->getUsername(), processQuantum, currentTime);
+					threads.emplace_back([=, &currentTime]() {
+						process->execute(user->getUsername(), processQuantum, currentTime);
+						});
+				}
+
+				// Wait for all threads to finish
+				for (auto& t : threads)
+				{
+					if (t.joinable())
+						t.join();
 				}
 			}
 		}
 	}
 
 private:
-	bool allUsersCompleted(const vector<User> &users) const // check if all users have completed all their processes
+	bool allUsersCompleted(const vector<User>& users) const // check if all users have completed all their processes
 	{
-		for (const auto &user : users)
+		for (const auto& user : users)
 		{
 			if (!user.allProcessesCompleted())
 			{
