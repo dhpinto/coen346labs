@@ -7,11 +7,8 @@
 #include <queue>
 #include <condition_variable>
 #include <sstream>
-//might have two active process running at the same time
-//portion of the cpu may be given at the same time
 
-
-//Global variables: it exist during the whole lifetime of the application
+//Global variables: it exists during the whole lifetime of the application
 int TIME = 0;//Global clock
 std::string DELIMITER = ";";
 std::mutex timeMutex;
@@ -61,7 +58,6 @@ public:
 				else {
 					oFile << line;
 				}
-
 			}
 		}
 		iFile.close();
@@ -90,10 +86,8 @@ public:
 
 class virtualMemoryManager
 {
-
 public:
-	virtualMemoryManager(int inMaxMainMemorySpace) :
-		maxMainMemorySpace(inMaxMainMemorySpace)
+	virtualMemoryManager(int inMaxMainMemorySpace) : maxMainMemorySpace(inMaxMainMemorySpace)
 	{
 		mainMemory = new Page[inMaxMainMemorySpace];//it feeds the max size to the array
 	}
@@ -152,11 +146,11 @@ public:
 		{
 			if (mainMemory[i].id == inVariableId)
 			{
-				mainMemory[i].lastAccessTime = TIME;//always want to update time	
+				mainMemory[i].lastAccessTime = TIME;//Always wants to update time
 				return mainMemory[i].value;
 			}
 		}
-		//loop through all but did not find the id
+		//Loops through all but did not find the id
 		std::string retrievedLine = diskSpace.retrievePage(inVariableId);
 		if (!retrievedLine.empty())
 		{
@@ -195,20 +189,17 @@ private:
 					return mainMemory[i].value;
 				}
 			}
-
 		}
 		else
 		{
-			int min = mainMemory[0].lastAccessTime;
-			int index = 0;
-			for (int i = 0; i < maxMainMemorySpace; i++)
-			{
-				if (mainMemory[i].lastAccessTime < min)
-				{
-					min = mainMemory[i].lastAccessTime;
-					index = i;
-				}
-			}
+            int index = 0;
+            int min = mainMemory[0].lastAccessTime;
+            for (int i = 1; i < maxMainMemorySpace; i++) {
+                if (mainMemory[i].lastAccessTime < min) {
+                    min = mainMemory[i].lastAccessTime;
+                    index = i;
+                }
+            }
             //Logging before replacing the page
             logEvent("Memory Manager, SWAP: Variable "+ splittedString[0]+" with Variable "+ mainMemory[index].id);
 
@@ -251,8 +242,6 @@ private:
 	largeDiskSpace diskSpace;
 	int maxMainMemorySpace;
 	int currentMainMemorySize = 0;
-
-
 };
 
 struct Process
