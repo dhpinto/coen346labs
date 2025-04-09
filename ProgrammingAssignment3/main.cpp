@@ -30,7 +30,7 @@ void logEvent(const std::string& event){
 //Clock function, where the clock runs on its own thread
 void clockThread(){
     while (running){
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
         std::lock_guard<std::mutex> lock(timeMutex);
         TIME++;
     }
@@ -173,7 +173,7 @@ public:
 private:
     std::mutex memoryMutex;//To protect virtualMemoryManager function because store, lookup and release modify/access the same resources
 
-    int swapFromDiskToMemory(const std::string& inLine)
+    int swapFromDiskToMemory(std::string inLine)
     {
         std::vector<std::string> splittedString = split(inLine, ';');
         if (currentMainMemorySize < maxMainMemorySpace)
@@ -298,7 +298,7 @@ int runningProcesses=0;
 void simulatingProcess(Process process, virtualMemoryManager* vmm){
     //Waiting until the clock reaches the start time
     while(TIME<process.startTime)
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
     {
         std::unique_lock<std::mutex> lock(queueMutex);
         readyQueue.push(process);
@@ -317,52 +317,43 @@ void simulatingProcess(Process process, virtualMemoryManager* vmm){
 
     logEvent("Process "+std::to_string(process.id)+ ": Started");
 
-    int startTime;
-    {
-        std::lock_guard<std::mutex> lck(timeMutex);
-        startTime = TIME;
-    }
+    int startTime=TIME;
+    std::cout << "[DEBUG] Process " << process.id << " got startTime: " << startTime<< ", duration: " << process.duration << std::endl;
+    std::cout << "[DEBUG] Process " << process.id<< " loop at TIME: " << TIME << " (elapsed: " << TIME - startTime << ")" << std::endl;
+    int commandCount=0;
 
-    while (true) {
-        int currentTime;
-        {
-            std::lock_guard<std::mutex> lk(timeMutex);
-            currentTime = TIME;
-        }
-
-        if (currentTime - startTime >= process.duration)
-            break;
-
-        std::string command = getNextCommand();
-
-        // Small sleep before processing command to ensure time differences between logs
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    while(TIME-startTime<process.duration){
+        std::string command=getNextCommand();
+        //Debugging purposes
+        std::cout << "[DEBUG] Process " << process.id << " executing: " << command << std::endl;
+        std::cout << "[DEBUG] Process " << process.id << " started loop at TIME: " << TIME << std::endl<<std::endl;
 
         std::stringstream ss(command);
-        std::string action, id;
+        std::string action,id;
         int value;
 
-        ss >> action >> id;
+        ss>>action>>id;
 
-        if (action == "Store") {
-            ss >> value;
-            vmm->store(id, value);
-            logEvent("Process " + std::to_string(process.id) + ", Store: Variable " + id + ", Value: " + std::to_string(value));
+        if(action=="Store"){
+            ss>>value;
+            vmm->store(id,value);
+            logEvent("Process "+ std::to_string(process.id)+ ", Store: Variable "+id+", Value: "+std::to_string(value));
         }
-        else if (action == "Release") {
+
+        else if (action=="Release"){
             vmm->release(id);
-            logEvent("Process " + std::to_string(process.id) + ", Release: Variable " + id);
-        }
-        else if (action == "Lookup") {
-            int result = vmm->lookup(id);
-            logEvent("Process " + std::to_string(process.id) + ", Lookup: Variable " + id + ", Value: " + std::to_string(result));
+            logEvent("Process "+ std::to_string(process.id)+", Release: Variable "+id);
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(rand()%1000+1));
+        else if(action=="Lookup"){
+            int result=vmm->lookup(id);
+            logEvent("Process "+std::to_string(process.id)+", Lookup: Variable "+id+", Value: "+std::to_string(result));
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(rand()%200+50));//Random time delay
+
+        commandCount++;
     }
-
-    logEvent("Process " + std::to_string(process.id) + ": Finished.");
-
+    logEvent("Process "+ std::to_string(process.id)+": Finished");
 
     //Freeing the core
     std::lock_guard<std::mutex> lck(queueMutex);
@@ -402,8 +393,7 @@ int main()
     std::ofstream ("/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/output.txt").close();//Clears the logs
     std::ofstream("/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/vm.txt").close();//Clears everything in the file at the start
 
-    //srand(time(0));
-    srand(static_cast<unsigned int>(time(nullptr)));//Random time selected
+    srand(time(0));//Random time selected
 
     std::thread clock(clockThread);
 
@@ -425,7 +415,6 @@ int main()
     }
 
     running= false;
-    if(clock.joinable())
-        clock.join();
+    clock.join();
     return 0;
 }
