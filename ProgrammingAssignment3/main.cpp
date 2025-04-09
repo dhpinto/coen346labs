@@ -23,14 +23,14 @@ int commandIndex=0;
 //Logging the output function with the first part of the expected output
 void logEvent(const std::string& event){
     std::lock_guard<std::mutex>lock(logMutex);
-    std::ofstream  out("output.txt", std::ios::app);
+    std::ofstream  out("/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/output.txt", std::ios::app);
     out<<"Clock: "<<TIME*1000<<", "<<event<<std::endl;
     out.close();
 }
 //Clock function, where the clock runs on its own thread
 void clockThread(){
     while (running){
-        std::this_thread::sleep_for(std::chrono::microseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
         std::lock_guard<std::mutex> lock(timeMutex);
         TIME++;
     }
@@ -39,159 +39,166 @@ void clockThread(){
 class largeDiskSpace
 {
 public:
-	std::string retrievePage(std::string inId)
-	{
-		std::string iFileName = "vm.txt";
-		std::ifstream iFile(iFileName);
-		std::string oFileName = "temp.txt";
-		std::ofstream oFile(oFileName);
-		std::string line;
-		std::string returnedString;
+    std::string retrievePage(std::string inId)
+    {
+        std::string iFileName = "/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/vm.txt";
+        std::ifstream iFile(iFileName);
+        std::string oFileName = "/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/temp.txt";
+        std::ofstream oFile(oFileName);
+        std::string line;
+        std::string returnedString;
 
-		if (iFile) {
-			while (std::getline(iFile, line)) {
-				std::string id = extractIdFromLine(line);
-				if (inId == id)
-				{
-					returnedString = line;
-				}
-				else {
-					oFile << line;
-				}
-			}
-		}
-		iFile.close();
-		oFile.close();
+        if (iFile) {
+            while (std::getline(iFile, line)) {
+                std::string id = extractIdFromLine(line);
+                if (inId == id)
+                {
+                    returnedString = line;
+                }
+                else {
+                    oFile << line;
+                }
+            }
+        }
+        iFile.close();
+        oFile.close();
 
-		remove(iFileName.c_str());//the string into char start
-		rename(oFileName.c_str(), iFileName.c_str());//we must use c_str conversion because these functions are old
-		return returnedString;
-	}
+        remove(iFileName.c_str());//the string into char start
+        rename(oFileName.c_str(), iFileName.c_str());//we must use c_str conversion because these functions are old
+        return returnedString;
+    }
 private:
-	std::string extractIdFromLine(std::string incomingLine)
-	{
-		std::string token = incomingLine.substr(0, incomingLine.find(DELIMITER));
-		return token;
-	}
+    std::string extractIdFromLine(std::string incomingLine)
+    {
+        std::string token = incomingLine.substr(0, incomingLine.find(DELIMITER));
+        return token;
+    }
 };
 
 class Page
 {
 public:
-	//default unassigned values
-	std::string id = "";
-	int value = -1;
-	int lastAccessTime = -1;
+    //default unassigned values
+    std::string id = "";
+    int value = -1;
+    int lastAccessTime = -1;
 };
 
 class virtualMemoryManager
 {
 public:
-	virtualMemoryManager(int inMaxMainMemorySpace) : maxMainMemorySpace(inMaxMainMemorySpace)
-	{
-		mainMemory = new Page[inMaxMainMemorySpace];//it feeds the max size to the array
-	}
+    virtualMemoryManager(int inMaxMainMemorySpace) : maxMainMemorySpace(inMaxMainMemorySpace)
+    {
+        mainMemory = new Page[inMaxMainMemorySpace];//it feeds the max size to the array
+    }
 
-	~virtualMemoryManager()
-	{
-		delete[] mainMemory;
-	}
+    ~virtualMemoryManager()
+    {
+        delete[] mainMemory;
+    }
 
-	void store(std::string inVariableId, unsigned int inValue)
-	{
+    void store(std::string inVariableId, unsigned int inValue)
+    {
         std::lock_guard<std::mutex> lock(memoryMutex);//Locking the critical section
 
-		if (currentMainMemorySize < maxMainMemorySpace)
-		{
-			for (int i = 0; i < maxMainMemorySpace; i++)
-			{
-				if (mainMemory[i].id.empty())
-				{
-					mainMemory[i].id = inVariableId;//variable id
-					mainMemory[i].value = inValue;//value
-					mainMemory[i].lastAccessTime = TIME;//last access TIME
-					currentMainMemorySize++;
-					return;
-				}
-			}
+        if (currentMainMemorySize < maxMainMemorySpace)
+        {
+            for (int i = 0; i < maxMainMemorySpace; i++)
+            {
+                if (mainMemory[i].id.empty())
+                {
+                    mainMemory[i].id = inVariableId;//variable id
+                    mainMemory[i].value = inValue;//value
+                    mainMemory[i].lastAccessTime = TIME;//last access TIME
+                    currentMainMemorySize++;
+                    return;
+                }
+            }
 
-		}
-		else
-		{
-			writeToFile(inVariableId, inValue);
-		}
-	}
+        }
+        else
+        {
+            writeToFile(inVariableId, inValue);
+        }
+    }
 
-	void release(std::string inVariableId)
-	{
+    void release(std::string inVariableId)
+    {
         std::lock_guard<std::mutex> lock(memoryMutex);//Locking the critical section
 
-		for (int i = 0; i < maxMainMemorySpace; i++)
-		{
-			if (mainMemory[i].id == inVariableId)
-			{
-				mainMemory[i].id = "";//variable id
-				mainMemory[i].value = -1;//value
-				mainMemory[i].lastAccessTime = TIME;//last access TIME
-				return;
-			}
-		}
-	}
+        for (int i = 0; i < maxMainMemorySpace; i++)
+        {
+            if (mainMemory[i].id == inVariableId)
+            {
+                mainMemory[i].id = "";//variable id
+                mainMemory[i].value = -1;//value
+                mainMemory[i].lastAccessTime = TIME;//last access TIME
+                return;
+            }
+        }
+    }
 
-	int lookup(std::string inVariableId)
-	{
+    int lookup(std::string inVariableId)
+    {
         std::lock_guard<std::mutex> lock(memoryMutex);//Locking the critical section
 
-		for (int i = 0; i < maxMainMemorySpace; i++)
-		{
-			if (mainMemory[i].id == inVariableId)
-			{
-				mainMemory[i].lastAccessTime = TIME;//Always wants to update time
-				return mainMemory[i].value;
-			}
-		}
-		//Loops through all but did not find the id
-		std::string retrievedLine = diskSpace.retrievePage(inVariableId);
-		if (!retrievedLine.empty())
-		{
-			return swapFromDiskToMemory(retrievedLine);
-		}
+        for (int i = 0; i < maxMainMemorySpace; i++)
+        {
+            if (mainMemory[i].id == inVariableId)
+            {
+                mainMemory[i].lastAccessTime = TIME;//Always wants to update time
+                return mainMemory[i].value;
+            }
+        }
+        //Loops through all but did not find the id
+        std::string retrievedLine = diskSpace.retrievePage(inVariableId);
+        if (!retrievedLine.empty())
+        {
+            return swapFromDiskToMemory(retrievedLine);
+        }
 
-		return -1;
+        return -1;
 
 
-	}
-	void printInfo()
-	{
-		for (int i = 0; i < maxMainMemorySpace; i++)
-		{
-			std::cout << "Page " << i + 1 << ": " << "ID: " << mainMemory[i].id << " "
-				<< "Value: " << mainMemory[i].value << " "
-				<< "Last Accessed Time: " << mainMemory[i].lastAccessTime << std::endl;
-		}
-	}
+    }
+    void printInfo()
+    {
+        for (int i = 0; i < maxMainMemorySpace; i++)
+        {
+            std::cout << "Page " << i + 1 << ": " << "ID: " << mainMemory[i].id << " "
+                      << "Value: " << mainMemory[i].value << " "
+                      << "Last Accessed Time: " << mainMemory[i].lastAccessTime << std::endl;
+        }
+    }
 private:
     std::mutex memoryMutex;//To protect virtualMemoryManager function because store, lookup and release modify/access the same resources
 
-	int swapFromDiskToMemory(std::string inLine)
-	{
-		std::vector<std::string> splittedString = split(inLine, ';');
-		if (currentMainMemorySize < maxMainMemorySpace)
-		{
-			for (int i = 0; i < maxMainMemorySpace; i++)
-			{
-				if (mainMemory[i].id.empty())
-				{
-					mainMemory[i].id = splittedString[0];//variable id
-					mainMemory[i].value = stoi(splittedString[1]);//value
-					mainMemory[i].lastAccessTime = TIME;//last access TIME
-					currentMainMemorySize++;
-					return mainMemory[i].value;
-				}
-			}
-		}
-		else
-		{
+    int swapFromDiskToMemory(const std::string& inLine)
+    {
+        std::vector<std::string> splittedString = split(inLine, ';');
+        if (currentMainMemorySize < maxMainMemorySpace)
+        {
+            for (int i = 0; i < maxMainMemorySpace; i++)
+            {
+                if (mainMemory[i].id.empty())
+                {
+                    mainMemory[i].id = splittedString[0];//variable id
+                    mainMemory[i].value = stoi(splittedString[1]);//value
+                    mainMemory[i].lastAccessTime = TIME;//last access TIME
+                    currentMainMemorySize++;
+                    return mainMemory[i].value;
+                }
+            }
+        }
+        else
+        {
+            //To debug lastAcessTime attribute
+            std::cout << "[DEBUG] lastAccessTimes: ";
+            for (int i = 0; i < maxMainMemorySpace; i++) {
+                std::cout << mainMemory[i].lastAccessTime << " ";
+            }
+            std::cout << std::endl;
+
             int index = 0;
             int min = mainMemory[0].lastAccessTime;
             for (int i = 1; i < maxMainMemorySpace; i++) {
@@ -203,50 +210,50 @@ private:
             //Logging before replacing the page
             logEvent("Memory Manager, SWAP: Variable "+ splittedString[0]+" with Variable "+ mainMemory[index].id);
 
-			writeToFile(mainMemory[index].id, mainMemory[index].value);
+            writeToFile(mainMemory[index].id, mainMemory[index].value);
 
-			mainMemory[index].id = splittedString[0];
-			mainMemory[index].value = stoi(splittedString[1]);//string convert to int because value is an int
-			mainMemory[index].lastAccessTime = TIME;//last access TIME
+            mainMemory[index].id = splittedString[0];
+            mainMemory[index].value = stoi(splittedString[1]);//string convert to int because value is an int
+            mainMemory[index].lastAccessTime = TIME;//last access TIME
 
-			return mainMemory[index].value;
-		}
+            return mainMemory[index].value;
+        }
         return -1;//In case of failure, it will fail safely
-	}
-	void writeToFile(std::string inVariableId, int inValue)
-	{
-		std::ofstream out;
+    }
+    void writeToFile(std::string inVariableId, int inValue)
+    {
+        std::ofstream out;
 
-		// std::ios::app is the open mode "append" meaning
-		// new data will be written to the end of the file.
-		out.open("vm.txt", std::ios::app);
+        // std::ios::app is the open mode "append" meaning
+        // new data will be written to the end of the file.
+        out.open("/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/vm.txt", std::ios::app);
 
-		std::string str = inVariableId + ";" + std::to_string(inValue);
-		out << str<<std::endl;
-	}
+        std::string str = inVariableId + ";" + std::to_string(inValue);
+        out << str<<std::endl;
+    }
 
-	std::vector<std::string> split(const std::string& s, char delim) {
-		std::vector<std::string> result;
-		std::stringstream ss(s);
-		std::string item;
+    std::vector<std::string> split(const std::string& s, char delim) {
+        std::vector<std::string> result;
+        std::stringstream ss(s);
+        std::string item;
 
-		while (std::getline(ss, item, delim)) {
-			result.push_back(item);
-		}
+        while (std::getline(ss, item, delim)) {
+            result.push_back(item);
+        }
 
-		return result;
-	}
+        return result;
+    }
 
-	//mapping is used it has a key value association, there exist function to store, erase and lookup
-	Page* mainMemory;
-	largeDiskSpace diskSpace;
-	int maxMainMemorySpace;
-	int currentMainMemorySize = 0;
+    //mapping is used it has a key value association, there exist function to store, erase and lookup
+    Page* mainMemory;
+    largeDiskSpace diskSpace;
+    int maxMainMemorySpace;
+    int currentMainMemorySize = 0;
 };
 
 struct Process
 {
-int id, startTime, duration;
+    int id, startTime, duration;
 };
 
 //Function to read the processes from processes.txt
@@ -291,7 +298,7 @@ int runningProcesses=0;
 void simulatingProcess(Process process, virtualMemoryManager* vmm){
     //Waiting until the clock reaches the start time
     while(TIME<process.startTime)
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     {
         std::unique_lock<std::mutex> lock(queueMutex);
         readyQueue.push(process);
@@ -310,34 +317,52 @@ void simulatingProcess(Process process, virtualMemoryManager* vmm){
 
     logEvent("Process "+std::to_string(process.id)+ ": Started");
 
-    int startTime=TIME;
+    int startTime;
+    {
+        std::lock_guard<std::mutex> lck(timeMutex);
+        startTime = TIME;
+    }
 
-    while(TIME-startTime<process.duration){
-        std::string command=getNextCommand();
+    while (true) {
+        int currentTime;
+        {
+            std::lock_guard<std::mutex> lk(timeMutex);
+            currentTime = TIME;
+        }
+
+        if (currentTime - startTime >= process.duration)
+            break;
+
+        std::string command = getNextCommand();
+
+        // Small sleep before processing command to ensure time differences between logs
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
         std::stringstream ss(command);
-        std::string action,id;
+        std::string action, id;
         int value;
 
-        ss>>action>>id;
+        ss >> action >> id;
 
-        if(action=="Store"){
-            ss>>value;
-            vmm->store(id,value);
-            logEvent("Process "+ std::to_string(process.id)+ ", Store: Variable "+id+", Value: "+std::to_string(value));
+        if (action == "Store") {
+            ss >> value;
+            vmm->store(id, value);
+            logEvent("Process " + std::to_string(process.id) + ", Store: Variable " + id + ", Value: " + std::to_string(value));
         }
-
-        else if (action=="Release"){
+        else if (action == "Release") {
             vmm->release(id);
-            logEvent("Process "+ std::to_string(process.id)+", Release: Variable "+id);
+            logEvent("Process " + std::to_string(process.id) + ", Release: Variable " + id);
+        }
+        else if (action == "Lookup") {
+            int result = vmm->lookup(id);
+            logEvent("Process " + std::to_string(process.id) + ", Lookup: Variable " + id + ", Value: " + std::to_string(result));
         }
 
-        else if(action=="Lookup"){
-            int result=vmm->lookup(id);
-            logEvent("Process "+std::to_string(process.id)+", Lookup: Variable "+id+", Value: "+std::to_string(result));
-        }
         std::this_thread::sleep_for(std::chrono::milliseconds(rand()%1000+1));
     }
-    logEvent("Process "+ std::to_string(process.id)+": Finished");
+
+    logEvent("Process " + std::to_string(process.id) + ": Finished.");
+
 
     //Freeing the core
     std::lock_guard<std::mutex> lck(queueMutex);
@@ -374,18 +399,19 @@ int readMemorySizeFromFile(const std::string& filename){
 
 int main()
 {
-    std::ofstream ("output.txt").close();//Clears the logs
-    std::ofstream("vm.txt").close();//Clears everything in the file at the start
+    std::ofstream ("/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/output.txt").close();//Clears the logs
+    std::ofstream("/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/vm.txt").close();//Clears everything in the file at the start
 
-    srand(time(0));//Random time selected
+    //srand(time(0));
+    srand(static_cast<unsigned int>(time(nullptr)));//Random time selected
 
     std::thread clock(clockThread);
 
     std::vector<Process> processes;
-    maxCores=readProcessFromFile("processes.txt",processes);
-    readCommandsFromFile("commands.txt");
+    maxCores=readProcessFromFile("/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/processes.txt",processes);
+    readCommandsFromFile("/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/commands.txt");
 
-    int memorySize= readMemorySizeFromFile("memconfig.txt");
+    int memorySize= readMemorySizeFromFile("/Users/alienmsfts/Desktop/COEN346/Labs/Programming_Assignment_3/memconfig.txt");
     virtualMemoryManager vmm(memorySize);//Passing the memory size to virtualMemoryManager
 
     std::vector<std::thread>processThreads;
@@ -399,6 +425,7 @@ int main()
     }
 
     running= false;
-    clock.join();
-	return 0;
+    if(clock.joinable())
+        clock.join();
+    return 0;
 }
